@@ -58,32 +58,27 @@ public class GameServiceImpl implements GameService{
 	@Transactional(readOnly = true)
 	public Game getGameByName(String name) {
 		log.info("Find game by name : " + name);
-		List<Game> list = gameDao.findByName(name);
-		if (list.size() > 0) {
-			return list.get(0); //game name is unique
-		} else {
-			throw new GameNotFoundException(name);
-		}				
+		
+		return gameDao.findByName(name)
+				.orElseThrow(() -> new GameNotFoundException(name)); 
+			
 	}
 
 	@Override
 	@Transactional
 	public Game updateGame(Long id, Game updatedGame) {
 		log.info("Update game by id : " + id + " with details : " + "id = " + updatedGame.getId() + ", name = " + updatedGame.getName());
-		if (!isGameNameExist(updatedGame.getName())) {
-		    return gameDao.findById(id)
-		    	      .map(game -> {
-		    	    	  game.setName(updatedGame.getName());
-		    	    	  game.setActive(updatedGame.isActive());
-		    	        return gameDao.save(game);
-		    	      })
-		    	      .orElseGet(() -> {
-		    	    	updatedGame.setId(id);
-		    	        return gameDao.save(updatedGame);
-		    	      });	
-		} else {
+		
+		Game game = gameDao.findById(id).orElseThrow(() -> new GameNotFoundException(id));		
+		
+		if(!game.getName().equals(updatedGame.getName()) && gameDao.existsByName(updatedGame.getName())) {
 			throw new GameNameDuplicatedException(updatedGame.getName());
-		}					
+		}
+		
+		game.setActive(updatedGame.isActive());
+		game.setName(updatedGame.getName());
+		
+		return gameDao.save(game);
 	}
 
 	@Override
@@ -93,12 +88,6 @@ public class GameServiceImpl implements GameService{
 	}
 	
 	private boolean isGameNameExist(String name) {
-		List<Game> list = gameDao.findByName(name); 
-		if (list.size() > 0) {
-			log.info("This game name already exist: " + name);
-			return true;
-		} else {
-			return false;
-		}
+		return gameDao.existsByName(name);
 	}
 }
